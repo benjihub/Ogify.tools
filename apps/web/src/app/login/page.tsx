@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/AuthForm";
+import { Logo } from "@/components/Logo";
 
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <Link
         href="/"
-        className="mb-10 flex items-center gap-2 font-display text-xl uppercase tracking-wide text-paper"
+        className="mb-10 flex items-center text-paper"
       >
-        <span className="h-[9px] w-[9px] rounded-full bg-cinnabar" />
-        Ogify
+        <Logo />
       </Link>
 
       <div className="mb-8 text-center">

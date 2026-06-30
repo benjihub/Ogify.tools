@@ -20,3 +20,29 @@ body {
     @apply font-display font-semibold uppercase tracking-wide;
   }
 }
+
+@layer utilities {
+  .logo-shutter-blades {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: logo-shutter-spin 1.35s cubic-bezier(0.12, 0.82, 0.22, 1) infinite;
+  }
+}
+
+@keyframes logo-shutter-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  28% {
+    transform: rotate(300deg);
+  }
+
+  58% {
+    transform: rotate(420deg);
+  }
+
+  100% {
+    transform: rotate(450deg);
+  }
+}

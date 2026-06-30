@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { Footer } from "@/components/Layout/Footer";
 import { Header } from "@/components/Layout/Header";
+import { DocsNav, type DocLink } from "./docs-nav";
 
-const DOC_LINKS = [
+const DOC_LINKS: DocLink[] = [
   { href: "/docs/quickstart", label: "Quickstart" },
   { href: "/docs/authentication", label: "Authentication" },
   { href: "/docs/api-reference/render-template", label: "Render template" },
@@ -27,23 +27,7 @@ export function DocsShell({
       <Header />
       <main className="mx-auto grid max-w-6xl gap-10 px-7 py-20 lg:grid-cols-[240px_1fr]">
         <aside className="lg:sticky lg:top-24 lg:h-fit">
-          <Link
-            href="/docs"
-            className="mb-5 block font-display text-lg uppercase tracking-wide text-paper"
-          >
-            Docs
-          </Link>
-          <nav className="flex flex-col gap-2 border-l border-line-dim pl-4">
-            {DOC_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-muted hover:text-paper"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          <DocsNav links={DOC_LINKS} />
         </aside>
 
         <article className="min-w-0">

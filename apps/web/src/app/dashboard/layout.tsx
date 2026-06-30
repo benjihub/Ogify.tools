@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -22,10 +23,9 @@ export default async function DashboardLayout({
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-7">
           <Link
             href="/"
-            className="flex items-center gap-2 font-display text-xl uppercase tracking-wide text-paper"
+            className="flex items-center text-paper"
           >
-            <span className="h-[9px] w-[9px] rounded-full bg-cinnabar" />
-            Ogify
+            <Logo />
           </Link>
           <span className="font-mono text-xs text-muted">{user.email}</span>
         </div>
