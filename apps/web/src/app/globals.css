@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  min-height: 100%;
+  background: #14181f;
+  color: #efe8d8;
+}
+
+@layer base {
+  body {
+    @apply bg-ink text-paper font-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-semibold uppercase tracking-wide;
+  }
+}
