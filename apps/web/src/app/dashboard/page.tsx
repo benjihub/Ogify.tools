@@ -83,81 +83,56 @@ function getMockRecentRenders(): RenderLog[] {
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const allowPreview = process.env.NODE_ENV !== "production";
 
-  if (!user && !allowPreview) redirect("/login");
+  if (!user) redirect("/login");
 
   const period = new Date().toISOString().slice(0, 7);
 
-  let subscription: SubscriptionDisplay;
-  let rendersUsed: number;
-  let apiKeys: ApiKeyDisplay[];
+  // Parallel data fetches
+  const [{ data: subRow }, { data: usageRow }, { data: keyRows }] =
+    await Promise.all([
+      supabase
+        .from("subscriptions")
+        .select("plan, renders_limit, status, current_period_end")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("usage")
+        .select("renders_used")
+        .eq("user_id", user.id)
+        .eq("period", period)
+        .single(),
+      supabase
+        .from("api_keys")
+        .select("id, key_preview, last_used_at, created_at")
+        .eq("user_id", user.id)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }),
+    ]);
 
-  if (user) {
-    // Parallel data fetches
-    const [{ data: subRow }, { data: usageRow }, { data: keyRows }] =
-      await Promise.all([
-        supabase
-          .from("subscriptions")
-          .select("plan, renders_limit, status, current_period_end")
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("usage")
-          .select("renders_used")
-          .eq("user_id", user.id)
-          .eq("period", period)
-          .single(),
-        supabase
-          .from("api_keys")
-          .select("id, key_preview, last_used_at, created_at")
-          .eq("user_id", user.id)
-          .is("revoked_at", null)
-          .order("created_at", { ascending: false }),
-      ]);
+  const subscription: SubscriptionDisplay = {
+    plan:             (subRow?.plan as PlanId) ?? "free",
+    rendersLimit:     subRow?.renders_limit ?? 100,
+    status:           subRow?.status ?? "active",
+    currentPeriodEnd: subRow?.current_period_end ?? null,
+  };
 
-    subscription = {
-      plan:             (subRow?.plan as PlanId) ?? "free",
-      rendersLimit:     subRow?.renders_limit ?? 100,
-      status:           subRow?.status ?? "active",
-      currentPeriodEnd: subRow?.current_period_end ?? null,
-    };
+  const rendersUsed = usageRow?.renders_used ?? 0;
 
-    rendersUsed = usageRow?.renders_used ?? 0;
-
-    apiKeys = (keyRows ?? []).map((k) => ({
-      id:          k.id,
-      keyPreview:  k.key_preview ?? null,
-      lastUsedAt:  k.last_used_at ?? null,
-      createdAt:   k.created_at,
-    }));
-  } else {
-    subscription = {
-      plan: "pro",
-      rendersLimit: 2_000,
-      status: "active",
-      currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-    rendersUsed = 742;
-    apiKeys = [
-      {
-        id: "preview-key",
-        keyPreview: "ogfy_live_demo_key",
-        lastUsedAt: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
-        createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
-  }
+  const apiKeys: ApiKeyDisplay[] = (keyRows ?? []).map((k) => ({
+    id:          k.id,
+    keyPreview:  k.key_preview ?? null,
+    lastUsedAt:  k.last_used_at ?? null,
+    createdAt:   k.created_at,
+  }));
 
   const firstName =
-    (user?.email?.split("@")[0] ?? "Preview")
+    (user.email?.split("@")[0] ?? "there")
       .split(".")
       .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
       .join(" ");
 
-  const memberSince = new Date(
-    user?.created_at ?? "2026-07-01T00:00:00.000Z"
-  ).toLocaleDateString("en-US", {
+  const memberSince = new Date(user.created_at).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
@@ -204,7 +179,7 @@ export default async function DashboardPage() {
         <ApiKeysPanel keys={apiKeys} />
         <BillingPanel
           subscription={subscription}
-          userEmail={user?.email ?? "preview@ogify.dev"}
+          userEmail={user.email ?? ""}
         />
       </div>
 

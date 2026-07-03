@@ -18,15 +18,22 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<Provider | null>(null);
+  const isBusy = loading || success !== null || oauthLoading !== null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
 
-    const { error: authError } =
+    const redirectTo =
+      new URLSearchParams(window.location.search).get("redirectTo") ??
+      "/dashboard";
+
+    const { data, error: authError } =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
@@ -38,12 +45,26 @@ export function AuthForm({ mode }: AuthFormProps) {
       return;
     }
 
-    router.push("/dashboard");
+    if (mode === "signup" && !data.session) {
+      setSuccess("Account created. Check your email to confirm your account.");
+      return;
+    }
+
+    setSuccess(
+      mode === "login"
+        ? "Signed in successfully. Loading dashboard..."
+        : "Account created successfully. Loading dashboard..."
+    );
+
     router.refresh();
+    setTimeout(() => {
+      router.replace(redirectTo);
+    }, 650);
   }
 
   async function handleOAuth(provider: "google" | "github") {
     setError(null);
+    setSuccess("Opening secure sign-in...");
     setOauthLoading(provider);
 
     const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
@@ -56,6 +77,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     if (oauthError) {
       setError(oauthError.message);
+      setSuccess(null);
       setOauthLoading(null);
     }
   }
@@ -65,7 +87,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <div className="grid gap-3">
         <Button
           className="w-full justify-center"
-          disabled={loading || oauthLoading !== null}
+          disabled={isBusy}
           onClick={() => handleOAuth("google")}
           type="button"
           variant="ghost"
@@ -79,7 +101,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </Button>
         <Button
           className="w-full justify-center"
-          disabled={loading || oauthLoading !== null}
+          disabled={isBusy}
           onClick={() => handleOAuth("github")}
           type="button"
           variant="ghost"
@@ -109,6 +131,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           placeholder="name@company.com"
           required
           value={email}
+          disabled={isBusy}
           onChange={(e) => setEmail(e.target.value)}
         />
         <Input
@@ -119,6 +142,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           required
           minLength={8}
           value={password}
+          disabled={isBusy}
           onChange={(e) => setPassword(e.target.value)}
         />
 
@@ -126,12 +150,30 @@ export function AuthForm({ mode }: AuthFormProps) {
           <p className="mb-4 font-mono text-xs text-cinnabar">{error}</p>
         )}
 
+        {success && (
+          <div className="mb-4 flex items-center gap-3 rounded border border-[#4ade80]/40 bg-[#4ade80]/10 px-3.5 py-3">
+            <Spinner />
+            <p className="font-mono text-xs leading-relaxed text-[#8ff0b2]">
+              {success}
+            </p>
+          </div>
+        )}
+
         <Button
           type="submit"
-          disabled={loading || oauthLoading !== null}
+          disabled={isBusy}
           className="w-full justify-center"
         >
-          {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
+          <span className="inline-flex items-center justify-center gap-2">
+            {loading || success ? <Spinner /> : null}
+            <span>
+              {loading || success
+                ? "Please wait..."
+                : mode === "login"
+                ? "Log in"
+                : "Create account"}
+            </span>
+          </span>
         </Button>
       </form>
 
@@ -153,6 +195,15 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
       </p>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[#8ff0b2]/30 border-t-[#8ff0b2]"
+    />
   );
 }
 

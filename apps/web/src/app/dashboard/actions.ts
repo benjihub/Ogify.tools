@@ -31,15 +31,7 @@ export async function generateApiKey(): Promise<{ key: string; id: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    if (process.env.NODE_ENV === "production") throw new Error("Unauthorized");
-
-    const bytes = crypto.getRandomValues(new Uint8Array(24));
-    const hex = Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return { key: `ogfy_live_${hex}`, id: `preview-${Date.now()}` };
-  }
+  if (!user) throw new Error("Unauthorized");
 
   // 24 random bytes → 48-char hex string
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -72,10 +64,7 @@ export async function revokeApiKey(keyId: string): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    if (process.env.NODE_ENV === "production") throw new Error("Unauthorized");
-    return;
-  }
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase
     .from("api_keys")

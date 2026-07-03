@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -16,6 +17,11 @@ const NAV_LINKS = [
 
 export function Header() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const authLink = user
+    ? { href: "/dashboard", label: "Dashboard", match: "/dashboard" }
+    : { href: "/login", label: "Login", match: "/login" };
+  const navLinks = [...NAV_LINKS.slice(0, -1), authLink];
 
   return (
     <header className="sticky top-0 z-50 border-b border-line-dim bg-ink/90 backdrop-blur">
@@ -28,7 +34,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm md:flex">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const isActive =
               link.match === "/"
                 ? pathname === "/"
@@ -51,8 +57,10 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Link href="/signup">
-            <Button variant="primary" size="sm">Get started free</Button>
+          <Link href={user ? "/dashboard" : "/signup"}>
+            <Button variant="primary" size="sm">
+              {user ? "Dashboard" : "Get started free"}
+            </Button>
           </Link>
         </div>
       </div>

@@ -14,12 +14,10 @@ export default async function DashboardLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const allowPreview = process.env.NODE_ENV !== "production";
 
-  if (!user && !allowPreview) redirect("/login");
+  if (!user) redirect("/login");
 
-  const email = user?.email ?? "preview@ogify.dev";
-  const initials = email.split("@")[0].slice(0, 2).toUpperCase();
+  const initials = (user.email?.split("@")[0] ?? "?").slice(0, 2).toUpperCase();
 
   return (
     <div className="min-h-screen bg-ink">
@@ -39,23 +37,14 @@ export default async function DashboardLayout({
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            {user ? (
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  className="font-mono text-xs text-muted hover:text-fg"
-                >
-                  Sign out
-                </button>
-              </form>
-            ) : (
-              <Link
-                href="/signup"
+            <form action={signOut}>
+              <button
+                type="submit"
                 className="font-mono text-xs text-muted hover:text-fg"
               >
-                Preview mode
-              </Link>
-            )}
+                Sign out
+              </button>
+            </form>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cinnabar font-mono text-xs font-bold text-paper">
               {initials}
             </div>

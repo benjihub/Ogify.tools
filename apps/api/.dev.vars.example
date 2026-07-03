@@ -2,8 +2,8 @@
 # In production, set these via: wrangler secret put <KEY>
 
 # Supabase — use the SERVICE ROLE key (not the anon key)
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_URL=https://fnrwytacoyeqczxeslku.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZucnd5dGFjb3llcWN6eGVzbGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MzU5ODIsImV4cCI6MjA5ODUxMTk4Mn0.YBzjIy-LmVVbCQBH_2riCidXSpGChBDWDDW-0MCkUh8
 
 # Paddle — the webhook secret from your Paddle dashboard
 # Dashboard → Notifications → (your endpoint) → secret key

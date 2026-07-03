@@ -6,6 +6,16 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <Link
+        href="/#features"
+        aria-label="Back to features"
+        className="absolute left-6 top-6 flex h-9 w-9 items-center justify-center rounded border border-line-dim text-muted transition hover:border-line hover:text-paper"
+      >
+        <span aria-hidden="true" className="font-mono text-lg leading-none">
+          ←
+        </span>
+      </Link>
+
+      <Link
         href="/"
         className="mb-10 flex items-center text-paper"
       >
