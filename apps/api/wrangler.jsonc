@@ -1,0 +1,94 @@
+/**
+ * Ogify API Worker configuration.
+ *
+ * Before deploying:
+ * - create the CACHE KV namespace and paste real ids below
+ * - create the optional RENDERS R2 bucket, or remove that binding if unused
+ * - set secrets with `wrangler secret put ...`
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ogify-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": ["**/*.wasm"],
+      "fallthrough": false
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID",
+      "preview_id": "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "RENDERS",
+      "bucket_name": "ogify-renders",
+      "preview_bucket_name": "ogify-renders-preview"
+    }
+  ],
+  "browser": {
+    "binding": "BROWSER"
+  },
+  "vars": {
+    "OGIFY_ENV": "production"
+  },
+  "env": {
+    "dev": {
+      "name": "ogify-api-dev",
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "REPLACE_WITH_YOUR_DEV_KV_NAMESPACE_ID",
+          "preview_id": "REPLACE_WITH_YOUR_DEV_KV_PREVIEW_ID"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "RENDERS",
+          "bucket_name": "ogify-renders-dev",
+          "preview_bucket_name": "ogify-renders-dev-preview"
+        }
+      ],
+      "browser": {
+        "binding": "BROWSER"
+      },
+      "vars": {
+        "OGIFY_ENV": "development"
+      }
+    },
+    "staging": {
+      "name": "ogify-api-staging",
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "REPLACE_WITH_YOUR_STAGING_KV_NAMESPACE_ID",
+          "preview_id": "REPLACE_WITH_YOUR_STAGING_KV_PREVIEW_ID"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "RENDERS",
+          "bucket_name": "ogify-renders-staging",
+          "preview_bucket_name": "ogify-renders-staging-preview"
+        }
+      ],
+      "browser": {
+        "binding": "BROWSER"
+      },
+      "vars": {
+        "OGIFY_ENV": "staging"
+      }
+    }
+  }
+}

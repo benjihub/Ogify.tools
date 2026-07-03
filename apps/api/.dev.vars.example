@@ -1,3 +1,13 @@
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-PADDLE_WEBHOOK_SECRET=
+# Copy this file to .dev.vars (gitignored) and fill in real values.
+# In production, set these via: wrangler secret put <KEY>
+
+# Supabase — use the SERVICE ROLE key (not the anon key)
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Paddle — the webhook secret from your Paddle dashboard
+# Dashboard → Notifications → (your endpoint) → secret key
+PADDLE_WEBHOOK_SECRET=pdl_ntfset_...
+
+# Internal signing key for cache keys — any random 32-char string
+CACHE_SIGNING_KEY=change_me_to_a_random_secret_32ch

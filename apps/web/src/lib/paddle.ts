@@ -37,4 +37,22 @@ export const PADDLE_PRICE_IDS = {
   lifetime: process.env.NEXT_PUBLIC_PADDLE_PRICE_LIFETIME ?? "",
 } as const;
 
-export type PlanId = keyof typeof PADDLE_PRICE_IDS;
+export type CheckoutPlanId = keyof typeof PADDLE_PRICE_IDS;
+
+export type PlanId = "free" | "starter" | "pro" | "business" | "lifetime";
+
+export const PLAN_LIMITS: Record<PlanId, number> = {
+  free: 100,
+  starter: 500,
+  pro: 2_000,
+  business: 10_000,
+  lifetime: 5_000,
+};
+
+export const PLAN_PRICES: Record<PlanId, string> = {
+  free: "$0 / mo",
+  starter: "$10 / mo",
+  pro: "$29 / mo",
+  business: "$99 / mo",
+  lifetime: "$99 one-time",
+};

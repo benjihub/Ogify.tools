@@ -79,7 +79,7 @@ export default function LandingPage() {
             <span>request</span>
             <span>render / template</span>
           </div>
-          <pre className="overflow-x-auto rounded-b bg-ink p-4 font-mono text-[12.5px] leading-relaxed text-[#CFE8D9]">
+          <pre className="code-card rounded-b">
 {`curl -X POST https://api.ogify.dev/render/template \\
   -H "x-api-key: $OGIFY_KEY" \\
   -d '{"template":"blog","title":"My Post"}' \\
@@ -255,25 +255,13 @@ function VideoSlot({ label, tag = "Demo video placeholder" }: { label: string; t
 function HeroCard() {
   return (
     <div className="flex items-center justify-center">
-      <div className="relative aspect-[1200/630] w-full overflow-hidden rounded border border-line-dim bg-gradient-to-br from-[#23303A] to-[#171E26] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)]">
-        <div className="absolute right-[26px] top-[26px] flex h-[108px] w-[108px] -rotate-[14deg] items-center justify-center rounded-full border-[3px] border-cinnabar">
-          <span className="text-center font-mono text-[9.5px] uppercase leading-relaxed tracking-wider text-cinnabar">
-            Ogify
-            <br />
-            Rendered
-          </span>
-        </div>
-        <div className="absolute inset-0 flex flex-col justify-end p-[34px]">
-          <div className="mb-2.5 font-mono text-[11px] uppercase tracking-widest text-gold">
-            Blog template
-          </div>
-          <div className="font-display text-[30px] normal-case leading-tight text-paper">
-            Shipping a side project in a weekend
-          </div>
-          <div className="mt-2.5 font-mono text-xs text-muted">
-            by Sarah Chen · ogify.dev
-          </div>
-        </div>
+      <div className="relative aspect-[1200/630] w-full overflow-hidden rounded border border-line-dim bg-ink shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)]">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: 'url("/landing-previews/hero-card.png")',
+          }}
+        />
       </div>
     </div>
   );

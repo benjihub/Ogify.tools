@@ -5,21 +5,27 @@ import { cn } from "@/lib/utils";
 
 type TemplateId = "blog" | "product" | "saas";
 
-const TEMPLATES: Record<TemplateId, { tag: string; title: string; author: string }> = {
+const TEMPLATES: Record<
+  TemplateId,
+  { tag: string; title: string; author: string; imageSrc: string }
+> = {
   blog: {
     tag: "Blog template",
     title: "Shipping a side project in a weekend",
     author: "by Sarah Chen · ogify.dev",
+    imageSrc: "/template-previews/blog.png",
   },
   product: {
     tag: "Product template",
     title: "Introducing the v2.0 dashboard",
     author: "Acme Inc. · acme.io",
+    imageSrc: "/template-previews/product.png",
   },
   saas: {
     tag: "SaaS template",
     title: "Now with team workspaces",
     author: "Flowbase · flowbase.app",
+    imageSrc: "/template-previews/saas.png",
   },
 };
 
@@ -81,23 +87,13 @@ export function TemplatePlayground() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="relative aspect-[1200/630] overflow-hidden rounded border border-line-dim bg-gradient-to-br from-[#23303A] to-[#171E26]">
-          <div className="absolute right-6 top-6 flex h-[108px] w-[108px] items-center justify-center rounded-full border-[3px] border-cinnabar">
-            <span className="text-center font-mono text-[9.5px] uppercase leading-relaxed tracking-wider text-cinnabar">
-              Ogify
-              <br />
-              Rendered
-            </span>
-          </div>
-          <div className="absolute inset-0 flex flex-col justify-end p-8">
-            <div className="mb-2 font-mono text-[11px] uppercase tracking-widest text-gold">
-              {TEMPLATES[activeTemplate].tag}
-            </div>
-            <div className="font-display text-3xl normal-case leading-tight text-paper">
-              {title || "Untitled"}
-            </div>
-            <div className="mt-2.5 font-mono text-xs text-muted">{author}</div>
-          </div>
+        <div className="relative aspect-[1200/630] overflow-hidden rounded border border-line-dim bg-ink">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url("${TEMPLATES[activeTemplate].imageSrc}")`,
+            }}
+          />
         </div>
       </div>
     </div>

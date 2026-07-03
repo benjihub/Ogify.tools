@@ -1,67 +1,148 @@
-import type { Context, MiddlewareHandler } from "hono";
-import { createMiddleware } from "hono/factory";
-import type { Env } from "../types";
-import { createSupabaseAdmin } from "./supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AuthContext, ApiKeyRow, SubscriptionRow, UsageRow, PlanId } from "../types/index.js";
+import { PLAN_LIMITS } from "../types/index.js";
 
-type ApiKeyValidation = {
-  ok: boolean;
-  userId?: string;
-  reason?: string;
-};
+// ── Helpers ───────────────────────────────────────────────────────────────
 
-async function sha256(value: string) {
-  const data = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
+/**
+ * SHA-256 hex digest of a UTF-8 string.
+ * Uses the Web Crypto API — available in both Workers and browsers.
+ */
+async function sha256(input: string): Promise<string> {
+  const encoded = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-export async function validateApiKey(
-  c: Context<Env>,
-  apiKey: string
-): Promise<ApiKeyValidation> {
-  const supabase = createSupabaseAdmin(c.env);
-  const keyHash = await sha256(apiKey);
-
-  const { data, error } = await supabase
-    .from("api_keys")
-    .select("id,user_id,usage_count,usage_limit,active")
-    .eq("key_hash", keyHash)
-    .maybeSingle();
-
-  if (error || !data || !data.active) {
-    return { ok: false, reason: "Invalid API key" };
-  }
-
-  if (data.usage_count >= data.usage_limit) {
-    return { ok: false, reason: "Usage limit exceeded" };
-  }
-
-  await supabase
-    .from("api_keys")
-    .update({ usage_count: data.usage_count + 1 })
-    .eq("id", data.id);
-
-  return { ok: true, userId: data.user_id };
+/** Returns the current usage period string, e.g. "2024-11" */
+function currentPeriod(): string {
+  return new Date().toISOString().slice(0, 7);
 }
 
-export const requireApiKey: MiddlewareHandler<Env> = createMiddleware<Env>(
-  async (c, next) => {
-    const authorization = c.req.header("Authorization");
-    const apiKey = authorization?.replace(/^Bearer\s+/i, "");
+/** ISO date string of the first day of next month (when usage resets) */
+export function nextResetDate(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    .toISOString()
+    .slice(0, 10);
+}
 
-    if (!apiKey) {
-      return c.json({ error: "Missing API key" }, 401);
-    }
+// ── Core auth/usage logic ─────────────────────────────────────────────────
 
-    const result = await validateApiKey(c, apiKey);
-
-    if (!result.ok) {
-      return c.json({ error: result.reason }, 401);
-    }
-
-    c.set("userId", result.userId);
-    await next();
+/**
+ * Validates the raw API key from the request, checks usage limits, and
+ * returns an AuthContext if the key is valid and the user has remaining
+ * renders this month.
+ *
+ * Throws (returns null + reason string) on any failure so the route
+ * handler can return a clean 401/403 response.
+ */
+export async function validateApiKey(
+  rawKey: string,
+  supabase: SupabaseClient
+): Promise<{ ctx: AuthContext } | { error: string; status: 401 | 403 }> {
+  if (!rawKey || rawKey.length < 10) {
+    return { error: "Missing or malformed API key.", status: 401 };
   }
-);
+
+  const keyHash = await sha256(rawKey);
+
+  // 1. Look up the key
+  const { data: keyRow, error: keyErr } = await supabase
+    .from("api_keys")
+    .select("id, user_id, revoked_at")
+    .eq("key_hash", keyHash)
+    .single<ApiKeyRow>();
+
+  if (keyErr || !keyRow) {
+    return { error: "Invalid API key.", status: 401 };
+  }
+
+  if (keyRow.revoked_at !== null) {
+    return { error: "API key has been revoked.", status: 401 };
+  }
+
+  const userId = keyRow.user_id;
+
+  // 2. Fetch the user's subscription (defaults to free if not found)
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("plan, renders_limit, status")
+    .eq("user_id", userId)
+    .single<Pick<SubscriptionRow, "plan" | "renders_limit" | "status">>();
+
+  const plan: PlanId = sub?.status === "active" ? (sub.plan as PlanId) : "free";
+  const rendersLimit = sub?.renders_limit ?? PLAN_LIMITS.free;
+
+  // 3. Fetch current-month usage (upsert the row if first use this period)
+  const period = currentPeriod();
+  const { data: usageRow, error: usageErr } = await supabase
+    .from("usage")
+    .select("renders_used")
+    .eq("user_id", userId)
+    .eq("period", period)
+    .single<Pick<UsageRow, "renders_used">>();
+
+  if (usageErr && usageErr.code !== "PGRST116") {
+    // PGRST116 = "Row not found" — fine for a new period, anything else is a DB error
+    return { error: "Could not retrieve usage data.", status: 403 };
+  }
+
+  const rendersUsed = usageRow?.renders_used ?? 0;
+
+  if (rendersUsed >= rendersLimit) {
+    return {
+      error: `Monthly render limit reached (${rendersUsed}/${rendersLimit}). Upgrade your plan to continue.`,
+      status: 403,
+    };
+  }
+
+  return {
+    ctx: {
+      userId,
+      apiKeyId: keyRow.id,
+      plan,
+      rendersLimit,
+      rendersUsed,
+    },
+  };
+}
+
+/**
+ * Atomically increments the render count for the current month.
+ * Uses an upsert so the first render of the month creates the row.
+ * Called AFTER a successful render — we only charge for completed renders.
+ */
+export async function incrementUsage(
+  userId: string,
+  supabase: SupabaseClient
+): Promise<void> {
+  const period = currentPeriod();
+
+  // Upsert approach: insert with 1 on first render, increment on conflict
+  const { error } = await supabase.rpc("increment_usage", {
+    p_user_id: userId,
+    p_period: period,
+  });
+
+  if (error) {
+    // Non-fatal — we've already returned the image. Log and move on.
+    console.error("[usage] Failed to increment usage:", error.message);
+  }
+}
+
+/**
+ * SQL function expected in Supabase (run once in the SQL editor):
+ *
+ * create or replace function increment_usage(p_user_id uuid, p_period text)
+ * returns void language plpgsql as $$
+ * begin
+ *   insert into usage (user_id, period, renders_used)
+ *   values (p_user_id, p_period, 1)
+ *   on conflict (user_id, period)
+ *   do update set renders_used = usage.renders_used + 1;
+ * end;
+ * $$;
+ */

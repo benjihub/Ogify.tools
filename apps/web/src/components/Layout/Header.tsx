@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +49,12 @@ export function Header() {
           })}
         </nav>
 
-        <Link href="/signup">
-          <Button variant="primary" size="sm">Get started free</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/signup">
+            <Button variant="primary" size="sm">Get started free</Button>
+          </Link>
+        </div>
       </div>
     </header>
   );

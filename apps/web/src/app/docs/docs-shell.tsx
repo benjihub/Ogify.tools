@@ -64,7 +64,7 @@ export function DocsSection({
 
 export function CodeBlock({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded bg-ink p-4 font-mono text-[12.5px] leading-relaxed text-[#CFE8D9]">
+    <pre className="code-card">
       {children}
     </pre>
   );

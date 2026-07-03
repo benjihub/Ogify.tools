@@ -1,79 +1,218 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import type { PlanId } from "@/lib/paddle";
+import { StatCards } from "@/components/dashboard/StatCards";
+import { Quickstart } from "@/components/dashboard/Quickstart";
+import { UsageChart } from "@/components/dashboard/UsageChart";
+import { ApiKeysPanel } from "@/components/dashboard/ApiKeysPanel";
+import { BillingPanel } from "@/components/dashboard/BillingPanel";
+import { RecentRenders } from "@/components/dashboard/RecentRenders";
+import { TemplateGallery } from "@/components/dashboard/TemplateGallery";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useUser } from "@/hooks/useUser";
-import { ApiKeyCard } from "@/components/ApiKeyCard";
-import { UsageBar } from "@/components/UsageBar";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+// ── Shared types (used by child components) ───────────────────────────────
 
-function generateMockKey() {
-  const chars = "abcdef0123456789";
-  const random = Array.from({ length: 32 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
-  return `ogfy_live_${random}`;
+export interface ApiKeyDisplay {
+  id: string;
+  keyPreview: string | null;   // first 20 chars of raw key — safe to show
+  lastUsedAt: string | null;
+  createdAt: string;
 }
 
-export default function DashboardPage() {
-  const { user } = useUser();
-  const [apiKey, setApiKey] = useState(generateMockKey);
+export interface SubscriptionDisplay {
+  plan: PlanId;
+  rendersLimit: number;
+  status: string;
+  currentPeriodEnd: string | null;
+}
 
-  // Replace with a real fetch against your usage/plan table once wired up.
-  const plan = { name: "Free", limit: 100, used: 42 };
+export interface DailyUsage {
+  date: string;   // YYYY-MM-DD
+  count: number;
+}
 
-  async function handleRegenerate() {
-    // TODO: call a server action / API route that revokes the old key
-    // and persists a new one in Supabase before updating local state.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    setApiKey(generateMockKey());
+export interface RenderLog {
+  id: string;
+  type: "template" | "url";
+  templateId: string | null;
+  status: "success" | "error" | "rate_limited";
+  durationMs: number | null;
+  createdAt: string;
+}
+
+// ── Mock data (replace with render_logs table queries) ────────────────────
+// Schema to add:
+//   create table public.render_logs (
+//     id uuid primary key default gen_random_uuid(),
+//     user_id uuid references auth.users(id),
+//     type text check (type in ('template','url')),
+//     template_id text,
+//     status text check (status in ('success','error','rate_limited')),
+//     duration_ms int,
+//     created_at timestamptz not null default now()
+//   );
+
+function getMockDailyData(): DailyUsage[] {
+  // Deterministic counts — replace with:
+  //   SELECT date_trunc('day', created_at)::date AS date, count(*)
+  //   FROM render_logs WHERE user_id = $1 AND created_at > now() - interval '30 days'
+  //   GROUP BY 1 ORDER BY 1
+  const counts = [4,7,12,8,15,23,31,18,9,14,22,35,28,41,38,26,33,19,11,24,30,17,8,21,29,36,24,15,28,22];
+  const now = new Date();
+  return counts.map((count, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (29 - i));
+    return { date: d.toISOString().slice(0, 10), count };
+  });
+}
+
+function getMockRecentRenders(): RenderLog[] {
+  const n = Date.now();
+  return [
+    { id:"1", type:"template", templateId:"blog",    status:"success",      durationMs:340,  createdAt: new Date(n - 2*60000).toISOString() },
+    { id:"2", type:"url",      templateId:null,       status:"success",      durationMs:1240, createdAt: new Date(n - 45*60000).toISOString() },
+    { id:"3", type:"template", templateId:"product",  status:"success",      durationMs:280,  createdAt: new Date(n - 3*3600000).toISOString() },
+    { id:"4", type:"template", templateId:"saas",     status:"error",        durationMs:null, createdAt: new Date(n - 5*3600000).toISOString() },
+    { id:"5", type:"url",      templateId:null,       status:"success",      durationMs:980,  createdAt: new Date(n - 24*3600000).toISOString() },
+    { id:"6", type:"template", templateId:"blog",     status:"rate_limited", durationMs:null, createdAt: new Date(n - 26*3600000).toISOString() },
+    { id:"7", type:"template", templateId:"product",  status:"success",      durationMs:295,  createdAt: new Date(n - 48*3600000).toISOString() },
+  ];
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const allowPreview = process.env.NODE_ENV !== "production";
+
+  if (!user && !allowPreview) redirect("/login");
+
+  const period = new Date().toISOString().slice(0, 7);
+
+  let subscription: SubscriptionDisplay;
+  let rendersUsed: number;
+  let apiKeys: ApiKeyDisplay[];
+
+  if (user) {
+    // Parallel data fetches
+    const [{ data: subRow }, { data: usageRow }, { data: keyRows }] =
+      await Promise.all([
+        supabase
+          .from("subscriptions")
+          .select("plan, renders_limit, status, current_period_end")
+          .eq("user_id", user.id)
+          .single(),
+        supabase
+          .from("usage")
+          .select("renders_used")
+          .eq("user_id", user.id)
+          .eq("period", period)
+          .single(),
+        supabase
+          .from("api_keys")
+          .select("id, key_preview, last_used_at, created_at")
+          .eq("user_id", user.id)
+          .is("revoked_at", null)
+          .order("created_at", { ascending: false }),
+      ]);
+
+    subscription = {
+      plan:             (subRow?.plan as PlanId) ?? "free",
+      rendersLimit:     subRow?.renders_limit ?? 100,
+      status:           subRow?.status ?? "active",
+      currentPeriodEnd: subRow?.current_period_end ?? null,
+    };
+
+    rendersUsed = usageRow?.renders_used ?? 0;
+
+    apiKeys = (keyRows ?? []).map((k) => ({
+      id:          k.id,
+      keyPreview:  k.key_preview ?? null,
+      lastUsedAt:  k.last_used_at ?? null,
+      createdAt:   k.created_at,
+    }));
+  } else {
+    subscription = {
+      plan: "pro",
+      rendersLimit: 2_000,
+      status: "active",
+      currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    rendersUsed = 742;
+    apiKeys = [
+      {
+        id: "preview-key",
+        keyPreview: "ogfy_live_demo_key",
+        lastUsedAt: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
+        createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
   }
 
+  const firstName =
+    (user?.email?.split("@")[0] ?? "Preview")
+      .split(".")
+      .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(" ");
+
+  const memberSince = new Date(
+    user?.created_at ?? "2026-07-01T00:00:00.000Z"
+  ).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const isNewUser = rendersUsed < 5;
+  const dailyData = getMockDailyData();
+  const recentRenders = getMockRecentRenders();
+
   return (
-    <div>
-      <h1 className="font-display text-2xl uppercase tracking-wide text-paper">
-        Dashboard
-      </h1>
-      <p className="mt-2 text-sm text-muted">
-        Signed in as {user?.email ?? "…"}
-      </p>
-
-      <div className="mt-10 grid gap-6 md:grid-cols-2">
-        <ApiKeyCard apiKey={apiKey} onRegenerate={handleRegenerate} />
-
-        <Card>
-          <h3 className="mb-1 font-mono text-[11px] uppercase tracking-wider text-gold">
-            Plan
-          </h3>
-          <p className="mb-5 text-sm text-muted">
-            You&apos;re currently on the {plan.name} plan.
-          </p>
-
-          <UsageBar used={plan.used} limit={plan.limit} planName={plan.name} />
-
-          <Link href="/pricing" className="mt-5 inline-block">
-            <Button variant="ghost" size="sm">
-              View plans
-            </Button>
-          </Link>
-        </Card>
+    <div className="space-y-8">
+      {/* ── Welcome ────────────────────────────────────── */}
+      <div>
+        <h1 className="font-display text-[28px] uppercase tracking-wide text-fg">
+          Welcome back, {firstName}.
+        </h1>
+        <p className="mt-1 font-mono text-xs text-muted">
+          Member since {memberSince}
+        </p>
       </div>
 
-      <Card className="mt-6">
-        <h3 className="mb-1 font-mono text-[11px] uppercase tracking-wider text-gold">
-          Quickstart
-        </h3>
-        <p className="mb-4 text-sm text-muted">
-          Render your first image with this key.
-        </p>
-        <pre className="overflow-x-auto rounded bg-ink p-4 font-mono text-[12.5px] leading-relaxed text-[#CFE8D9]">
-{`curl -X POST https://api.ogify.dev/render/template \\
-  -H "x-api-key: ${apiKey}" \\
-  -d '{"template":"blog","title":"My Post"}' \\
-  --output social.png`}
-        </pre>
-      </Card>
+      {/* ── Stat cards ─────────────────────────────────── */}
+      <StatCards
+        subscription={subscription}
+        rendersUsed={rendersUsed}
+        period={period}
+        apiKeys={apiKeys}
+      />
+
+      {/* ── Quickstart ─────────────────────────────────── */}
+      <Quickstart
+        isNewUser={isNewUser}
+        keyPreview={apiKeys[0]?.keyPreview ?? null}
+      />
+
+      {/* ── Usage chart ────────────────────────────────── */}
+      <UsageChart
+        data={dailyData}
+        rendersUsed={rendersUsed}
+        rendersLimit={subscription.rendersLimit}
+      />
+
+      {/* ── Keys + Billing ─────────────────────────────── */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ApiKeysPanel keys={apiKeys} />
+        <BillingPanel
+          subscription={subscription}
+          userEmail={user?.email ?? "preview@ogify.dev"}
+        />
+      </div>
+
+      {/* ── Recent renders ─────────────────────────────── */}
+      <RecentRenders renders={recentRenders} totalRendersUsed={rendersUsed} />
+
+      {/* ── Template gallery ───────────────────────────── */}
+      <TemplateGallery />
     </div>
   );
 }

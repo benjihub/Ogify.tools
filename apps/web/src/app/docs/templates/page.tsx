@@ -74,18 +74,9 @@ function TemplatePreview({ template }: { template: Template }) {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `linear-gradient(135deg, rgba(20, 24, 31, 0.88), rgba(29, 35, 44, 0.72)), url("${template.imageSrc}")`,
+          backgroundImage: `url("${template.imageSrc}")`,
         }}
       />
-      <div className="absolute inset-0 flex flex-col justify-between p-5">
-        <span className="w-fit rounded border border-line-dim bg-ink-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
-          Canva image slot
-        </span>
-        <div className="max-w-full">
-          <p className="text-lg font-semibold text-paper">{template.imageLabel}</p>
-          <p className="mt-2 break-all font-mono text-[11px] text-muted">{template.imageSrc}</p>
-        </div>
-      </div>
     </div>
   );
 }

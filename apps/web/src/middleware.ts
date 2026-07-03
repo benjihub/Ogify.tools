@@ -8,8 +8,9 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup");
+  const allowDashboardPreview = process.env.NODE_ENV !== "production";
 
-  if (isProtectedRoute && !user) {
+  if (isProtectedRoute && !user && !allowDashboardPreview) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);

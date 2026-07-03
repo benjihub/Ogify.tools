@@ -2,14 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body {
-  min-height: 100%;
-  background: #14181f;
-  color: #efe8d8;
-}
-
 @layer base {
+  :root {
+    --bg: 20 24 31;
+    --bg-soft: 29 35 44;
+    --fg: 239 232 216;
+    --fg-soft: 226 217 194;
+    --muted: 169 175 188;
+    --border: 139 147 161;
+    --border-soft: 58 65 80;
+    --gold: 212 161 44;
+  }
+
+  .dark {
+    --bg: 20 24 31;
+    --bg-soft: 29 35 44;
+    --fg: 239 232 216;
+    --fg-soft: 226 217 194;
+    --muted: 169 175 188;
+    --border: 139 147 161;
+    --border-soft: 58 65 80;
+    --gold: 212 161 44;
+  }
+
+  .light {
+    --bg: 247 244 236;
+    --bg-soft: 255 255 255;
+    --fg: 20 24 31;
+    --fg-soft: 48 55 66;
+    --muted: 91 100 114;
+    --border: 139 147 161;
+    --border-soft: 224 218 200;
+    --gold: 154 106 13;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+    background: rgb(var(--bg));
+    color: rgb(var(--fg));
+  }
+
   body {
     @apply bg-ink text-paper font-body antialiased;
   }
@@ -21,28 +54,17 @@ body {
   }
 }
 
-@layer utilities {
-  .logo-shutter-blades {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: logo-shutter-spin 1.35s cubic-bezier(0.12, 0.82, 0.22, 1) infinite;
-  }
-}
-
-@keyframes logo-shutter-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  28% {
-    transform: rotate(300deg);
-  }
-
-  58% {
-    transform: rotate(420deg);
-  }
-
-  100% {
-    transform: rotate(450deg);
+@layer components {
+  .code-card {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid rgb(var(--border-soft));
+    background: #0d1412;
+    color: #8ff0b2;
+    padding: 1rem;
+    font-family: var(--font-plex-mono), monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    box-shadow: inset 0 0 0 1px rgba(143, 240, 178, 0.08);
   }
 }

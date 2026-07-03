@@ -1,24 +1,27 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: "#14181F",
-        "ink-soft": "#1D232C",
-        paper: "#EFE8D8",
-        "paper-dim": "#E2D9C2",
+        ink: "rgb(var(--bg) / <alpha-value>)",
+        "ink-soft": "rgb(var(--bg-soft) / <alpha-value>)",
+        fg: "rgb(var(--fg) / <alpha-value>)",
+        paper: "rgb(var(--fg) / <alpha-value>)",
+        "paper-dim": "rgb(var(--fg-soft) / <alpha-value>)",
         cinnabar: {
           DEFAULT: "#C73E1D",
           dark: "#9A2E14",
         },
-        gold: "#D4A12C",
+        gold: "rgb(var(--gold) / <alpha-value>)",
         line: {
-          DEFAULT: "#8B93A1",
-          dim: "#3A4150",
+          DEFAULT: "rgb(var(--border) / <alpha-value>)",
+          dim: "rgb(var(--border-soft) / <alpha-value>)",
         },
-        muted: "#A9AFBC",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        stampInk: "#14181F",
       },
       fontFamily: {
         display: ["var(--font-oswald)", "sans-serif"],

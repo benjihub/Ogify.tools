@@ -7,13 +7,13 @@ import { Header } from "@/components/Layout/Header";
 import { PaddleCheckout } from "@/components/PaddleCheckout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { PlanId } from "@/lib/paddle";
+import type { CheckoutPlanId } from "@/lib/paddle";
 
 type BillingInterval = "monthly" | "yearly";
 
 const PAID_PLAN_IDS: Record<
   Exclude<PlanSlug, "free">,
-  Record<BillingInterval, PlanId>
+  Record<BillingInterval, CheckoutPlanId>
 > = {
   starter: {
     monthly: "starterMonthly",
@@ -213,7 +213,7 @@ export default function PricingPage() {
             <p className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-gold">
               Open Graph implementation
             </p>
-            <pre className="mt-3 overflow-x-auto rounded bg-ink p-4 font-mono text-[12px] leading-relaxed text-[#CFE8D9]">
+            <pre className="code-card mt-3 text-[12px]">
               {`<meta property="og:image" content="https://api.ogify.dev/render/template?template=blog&title=Launch" />`}
             </pre>
           </div>

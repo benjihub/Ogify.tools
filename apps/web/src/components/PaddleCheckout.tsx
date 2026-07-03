@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { getPaddleInstance, PADDLE_PRICE_IDS, type PlanId } from "@/lib/paddle";
+import {
+  getPaddleInstance,
+  PADDLE_PRICE_IDS,
+  type CheckoutPlanId,
+} from "@/lib/paddle";
 import { Button } from "@/components/ui/button";
 
 interface PaddleCheckoutProps {
-  plan: PlanId;
+  plan: CheckoutPlanId;
   email?: string;
   children: ReactNode;
   variant?: "primary" | "ghost" | "paper";

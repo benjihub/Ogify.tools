@@ -1,24 +1,21 @@
 {
-  "name": "@ogify/api",
-  "version": "0.1.0",
-  "private": true,
+  "name": "ogify-api",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev src/index.ts --local --port 8787",
-    "deploy": "wrangler deploy",
-    "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "dev": "wrangler dev --env dev",
+    "deploy": "wrangler deploy --minify",
+    "deploy:staging": "wrangler deploy --env staging",
+    "type-check": "tsc --noEmit",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
-    "@ogify/shared": "*",
+    "@cloudflare/puppeteer": "^0.0.8",
     "@resvg/resvg-wasm": "^2.6.2",
-    "@supabase/supabase-js": "^2.45.4",
-    "hono": "^4.6.3"
+    "@supabase/supabase-js": "^2.110.0",
+    "hono": "^4.12.27"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240925.0",
-    "typescript": "^5.6.2",
-    "wrangler": "^3.78.6"
+    "@types/node": "^26.1.0",
+    "wrangler": "^4.106.0"
   }
 }
