@@ -39,43 +39,41 @@ export interface RenderLog {
   createdAt: string;
 }
 
-// ── Mock data (replace with render_logs table queries) ────────────────────
-// Schema to add:
-//   create table public.render_logs (
-//     id uuid primary key default gen_random_uuid(),
-//     user_id uuid references auth.users(id),
-//     type text check (type in ('template','url')),
-//     template_id text,
-//     status text check (status in ('success','error','rate_limited')),
-//     duration_ms int,
-//     created_at timestamptz not null default now()
-//   );
+interface RenderLogRow {
+  id: string;
+  type: RenderLog["type"];
+  template_id: string | null;
+  status: RenderLog["status"];
+  duration_ms: number | null;
+  created_at: string;
+}
 
-function getMockDailyData(): DailyUsage[] {
-  // Deterministic counts — replace with:
-  //   SELECT date_trunc('day', created_at)::date AS date, count(*)
-  //   FROM render_logs WHERE user_id = $1 AND created_at > now() - interval '30 days'
-  //   GROUP BY 1 ORDER BY 1
-  const counts = [4,7,12,8,15,23,31,18,9,14,22,35,28,41,38,26,33,19,11,24,30,17,8,21,29,36,24,15,28,22];
+function buildDailyUsage(rows: Pick<RenderLogRow, "created_at">[]): DailyUsage[] {
   const now = new Date();
-  return counts.map((count, i) => {
+  const counts = new Map<string, number>();
+
+  rows.forEach((row) => {
+    const date = row.created_at.slice(0, 10);
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  });
+
+  return Array.from({ length: 30 }, (_, i) => {
     const d = new Date(now);
     d.setDate(d.getDate() - (29 - i));
-    return { date: d.toISOString().slice(0, 10), count };
+    const date = d.toISOString().slice(0, 10);
+    return { date, count: counts.get(date) ?? 0 };
   });
 }
 
-function getMockRecentRenders(): RenderLog[] {
-  const n = Date.now();
-  return [
-    { id:"1", type:"template", templateId:"blog",    status:"success",      durationMs:340,  createdAt: new Date(n - 2*60000).toISOString() },
-    { id:"2", type:"url",      templateId:null,       status:"success",      durationMs:1240, createdAt: new Date(n - 45*60000).toISOString() },
-    { id:"3", type:"template", templateId:"product",  status:"success",      durationMs:280,  createdAt: new Date(n - 3*3600000).toISOString() },
-    { id:"4", type:"template", templateId:"saas",     status:"error",        durationMs:null, createdAt: new Date(n - 5*3600000).toISOString() },
-    { id:"5", type:"url",      templateId:null,       status:"success",      durationMs:980,  createdAt: new Date(n - 24*3600000).toISOString() },
-    { id:"6", type:"template", templateId:"blog",     status:"rate_limited", durationMs:null, createdAt: new Date(n - 26*3600000).toISOString() },
-    { id:"7", type:"template", templateId:"product",  status:"success",      durationMs:295,  createdAt: new Date(n - 48*3600000).toISOString() },
-  ];
+function mapRenderLog(row: RenderLogRow): RenderLog {
+  return {
+    id: row.id,
+    type: row.type,
+    templateId: row.template_id,
+    status: row.status,
+    durationMs: row.duration_ms,
+    createdAt: row.created_at,
+  };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -89,7 +87,17 @@ export default async function DashboardPage() {
   const period = new Date().toISOString().slice(0, 7);
 
   // Parallel data fetches
-  const [{ data: subRow }, { data: usageRow }, { data: keyRows }] =
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+  const [
+    { data: subRow },
+    { data: usageRow },
+    { data: keyRows },
+    { data: recentRenderRows },
+    { data: chartRenderRows },
+  ] =
     await Promise.all([
       supabase
         .from("subscriptions")
@@ -108,6 +116,17 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .is("revoked_at", null)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("render_logs")
+        .select("id, type, template_id, status, duration_ms, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("render_logs")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .gte("created_at", thirtyDaysAgo.toISOString()),
     ]);
 
   const subscription: SubscriptionDisplay = {
@@ -138,8 +157,8 @@ export default async function DashboardPage() {
   });
 
   const isNewUser = rendersUsed < 5;
-  const dailyData = getMockDailyData();
-  const recentRenders = getMockRecentRenders();
+  const dailyData = buildDailyUsage(chartRenderRows ?? []);
+  const recentRenders = ((recentRenderRows ?? []) as RenderLogRow[]).map(mapRenderLog);
 
   return (
     <div className="space-y-8">

@@ -109,14 +109,46 @@ async function cachePng(
 function recordSuccessfulRender(
   c: { executionCtx: { waitUntil(promise: Promise<unknown>): void } },
   auth: AuthContext,
-  supabase: ReturnType<typeof makeSupabase>
+  supabase: ReturnType<typeof makeSupabase>,
+  log: {
+    type: "template" | "url";
+    templateId: string | null;
+    durationMs: number | null;
+  }
 ) {
   c.executionCtx.waitUntil(
     Promise.all([
       incrementUsage(auth.userId, supabase),
       markApiKeyUsed(auth.apiKeyId, supabase),
+      insertRenderLog(auth.userId, supabase, {
+        ...log,
+        status: "success",
+      }),
     ]).then(() => undefined)
   );
+}
+
+async function insertRenderLog(
+  userId: string,
+  supabase: ReturnType<typeof makeSupabase>,
+  log: {
+    type: "template" | "url";
+    templateId: string | null;
+    status: "success" | "error" | "rate_limited";
+    durationMs: number | null;
+  }
+): Promise<void> {
+  const { error } = await supabase.from("render_logs").insert({
+    user_id: userId,
+    type: log.type,
+    template_id: log.templateId,
+    status: log.status,
+    duration_ms: log.durationMs,
+  });
+
+  if (error) {
+    console.error("[render_logs] Failed to insert render log:", error.message);
+  }
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────
@@ -135,6 +167,7 @@ app.get("/health", (c) =>
  * Returns: image/png
  */
 app.post("/render/template", requireApiKey, async (c) => {
+  const startedAt = Date.now();
   let body: Partial<TemplateRenderRequest>;
   try {
     body = await c.req.json<Partial<TemplateRenderRequest>>();
@@ -178,7 +211,11 @@ app.post("/render/template", requireApiKey, async (c) => {
   if (cached) {
     const auth = c.get("auth");
     const supabase = makeSupabase(c.env);
-    recordSuccessfulRender(c, auth, supabase);
+    recordSuccessfulRender(c, auth, supabase, {
+      type: "template",
+      templateId: template,
+      durationMs: Date.now() - startedAt,
+    });
     return pngResponse(cached, "HIT", auth);
   }
 
@@ -196,7 +233,11 @@ app.post("/render/template", requireApiKey, async (c) => {
   const auth = c.get("auth");
   const supabase = makeSupabase(c.env);
   c.executionCtx.waitUntil(cachePng(c.env.CACHE, key, png));
-  recordSuccessfulRender(c, auth, supabase);
+  recordSuccessfulRender(c, auth, supabase, {
+    type: "template",
+    templateId: template,
+    durationMs: Date.now() - startedAt,
+  });
 
   return pngResponse(png, "MISS", auth);
 });
@@ -208,6 +249,7 @@ app.post("/render/template", requireApiKey, async (c) => {
  * Returns: image/png
  */
 app.post("/render/url", requireApiKey, async (c) => {
+  const startedAt = Date.now();
   let body: Partial<ScreenshotRequest>;
   try {
     body = await c.req.json<Partial<ScreenshotRequest>>();
@@ -257,7 +299,11 @@ app.post("/render/url", requireApiKey, async (c) => {
 
   const auth = c.get("auth");
   const supabase = makeSupabase(c.env);
-  recordSuccessfulRender(c, auth, supabase);
+  recordSuccessfulRender(c, auth, supabase, {
+    type: "url",
+    templateId: null,
+    durationMs: Date.now() - startedAt,
+  });
 
   return pngResponse(png, "MISS", auth);
 });

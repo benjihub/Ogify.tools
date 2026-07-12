@@ -15,8 +15,11 @@ export function UsageChart({ data, rendersUsed, rendersLimit }: UsageChartProps)
 
   const max = Math.max(...data.map((d) => d.count), 1);
   const total = data.reduce((s, d) => s + d.count, 0);
-  const avg = total / data.length;
-  const peak = data.reduce((best, d) => (d.count > best.count ? d : best), data[0]);
+  const avg = data.length > 0 ? total / data.length : 0;
+  const peak =
+    data.length > 0
+      ? data.reduce((best, d) => (d.count > best.count ? d : best), data[0])
+      : { date: new Date().toISOString().slice(0, 10), count: 0 };
   const pct = Math.round((rendersUsed / rendersLimit) * 100);
   const barColor = pct >= 80 ? "#C73E1D" : pct >= 50 ? "#D4A12C" : "#4ade80";
 
@@ -103,7 +106,9 @@ export function UsageChart({ data, rendersUsed, rendersLimit }: UsageChartProps)
       {/* X-axis labels — first and last */}
       <div className="mt-1 flex justify-between font-mono text-[10px] text-muted">
         <span>
-          {new Date(data[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          {data[0]
+            ? new Date(data[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            : "No data"}
         </span>
         <span>Today</span>
       </div>
