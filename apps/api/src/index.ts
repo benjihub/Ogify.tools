@@ -20,7 +20,12 @@ import type {
   ScreenshotRequest,
 } from "./types/index.js";
 import { makeSupabase } from "./lib/supabase.js";
-import { validateApiKey, incrementUsage, nextResetDate } from "./lib/auth.js";
+import {
+  validateApiKey,
+  incrementUsage,
+  markApiKeyUsed,
+  nextResetDate,
+} from "./lib/auth.js";
 import { renderTemplateSvg, TEMPLATE_IDS } from "./lib/svg-templates/index.js";
 import { svgToPng, cacheKey } from "./lib/renderers/template.js";
 import { screenshotUrl } from "./lib/renderers/screenshot.js";
@@ -101,6 +106,19 @@ async function cachePng(
   });
 }
 
+function recordSuccessfulRender(
+  c: { executionCtx: { waitUntil(promise: Promise<unknown>): void } },
+  auth: AuthContext,
+  supabase: ReturnType<typeof makeSupabase>
+) {
+  c.executionCtx.waitUntil(
+    Promise.all([
+      incrementUsage(auth.userId, supabase),
+      markApiKeyUsed(auth.apiKeyId, supabase),
+    ]).then(() => undefined)
+  );
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────
 
 /**
@@ -158,7 +176,10 @@ app.post("/render/template", requireApiKey, async (c) => {
   const key = await cacheKey(req);
   const cached = await getCachedPng(c.env.CACHE, key);
   if (cached) {
-    return pngResponse(cached, "HIT", c.get("auth"));
+    const auth = c.get("auth");
+    const supabase = makeSupabase(c.env);
+    recordSuccessfulRender(c, auth, supabase);
+    return pngResponse(cached, "HIT", auth);
   }
 
   // Render
@@ -174,10 +195,8 @@ app.post("/render/template", requireApiKey, async (c) => {
   // Fire-and-forget: cache + usage increment
   const auth = c.get("auth");
   const supabase = makeSupabase(c.env);
-  void Promise.all([
-    cachePng(c.env.CACHE, key, png),
-    incrementUsage(auth.userId, supabase),
-  ]);
+  c.executionCtx.waitUntil(cachePng(c.env.CACHE, key, png));
+  recordSuccessfulRender(c, auth, supabase);
 
   return pngResponse(png, "MISS", auth);
 });
@@ -238,7 +257,7 @@ app.post("/render/url", requireApiKey, async (c) => {
 
   const auth = c.get("auth");
   const supabase = makeSupabase(c.env);
-  void incrementUsage(auth.userId, supabase);
+  recordSuccessfulRender(c, auth, supabase);
 
   return pngResponse(png, "MISS", auth);
 });

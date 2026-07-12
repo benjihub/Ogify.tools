@@ -133,6 +133,20 @@ export async function incrementUsage(
   }
 }
 
+export async function markApiKeyUsed(
+  apiKeyId: string,
+  supabase: SupabaseClient
+): Promise<void> {
+  const { error } = await supabase
+    .from("api_keys")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", apiKeyId);
+
+  if (error) {
+    console.error("[api_keys] Failed to update last_used_at:", error.message);
+  }
+}
+
 /**
  * SQL function expected in Supabase (run once in the SQL editor):
  *

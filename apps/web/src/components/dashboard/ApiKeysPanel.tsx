@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { generateApiKey, revokeApiKey } from "@/app/dashboard/actions";
 import type { ApiKeyDisplay } from "@/app/dashboard/page";
@@ -10,6 +11,7 @@ interface ApiKeysPanelProps {
 }
 
 export function ApiKeysPanel({ keys: initialKeys }: ApiKeysPanelProps) {
+  const router = useRouter();
   const [keys, setKeys] = useState(initialKeys);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export function ApiKeysPanel({ keys: initialKeys }: ApiKeysPanelProps) {
           },
           ...prev,
         ]);
+        router.refresh();
       } catch (e) {
         setError((e as Error).message);
       }
@@ -45,6 +48,7 @@ export function ApiKeysPanel({ keys: initialKeys }: ApiKeysPanelProps) {
         await revokeApiKey(id);
         setKeys((prev) => prev.filter((k) => k.id !== id));
         setRevokeTarget(null);
+        router.refresh();
       } catch (e) {
         setError((e as Error).message);
       }
