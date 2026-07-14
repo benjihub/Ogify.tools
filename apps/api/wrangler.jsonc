@@ -26,22 +26,15 @@
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID",
-      "preview_id": "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "RENDERS",
-      "bucket_name": "ogify-renders",
-      "preview_bucket_name": "ogify-renders-preview"
+      "id": "a5de0a4d57724257baf8e8e835de9ec8"
     }
   ],
   "browser": {
     "binding": "BROWSER"
   },
   "vars": {
-    "OGIFY_ENV": "production"
+    "OGIFY_ENV": "production",
+    "SUPABASE_URL": "https://fnrwytacoyeqczxeslku.supabase.co"
   },
   "env": {
     "dev": {
@@ -49,22 +42,15 @@
       "kv_namespaces": [
         {
           "binding": "CACHE",
-          "id": "REPLACE_WITH_YOUR_DEV_KV_NAMESPACE_ID",
-          "preview_id": "REPLACE_WITH_YOUR_DEV_KV_PREVIEW_ID"
-        }
-      ],
-      "r2_buckets": [
-        {
-          "binding": "RENDERS",
-          "bucket_name": "ogify-renders-dev",
-          "preview_bucket_name": "ogify-renders-dev-preview"
+          "id": "07cb2b71e95d498f9e71aaa4662a0a7d"
         }
       ],
       "browser": {
         "binding": "BROWSER"
       },
       "vars": {
-        "OGIFY_ENV": "development"
+        "OGIFY_ENV": "development",
+        "SUPABASE_URL": "https://fnrwytacoyeqczxeslku.supabase.co"
       }
     },
     "staging": {
@@ -72,22 +58,15 @@
       "kv_namespaces": [
         {
           "binding": "CACHE",
-          "id": "REPLACE_WITH_YOUR_STAGING_KV_NAMESPACE_ID",
-          "preview_id": "REPLACE_WITH_YOUR_STAGING_KV_PREVIEW_ID"
-        }
-      ],
-      "r2_buckets": [
-        {
-          "binding": "RENDERS",
-          "bucket_name": "ogify-renders-staging",
-          "preview_bucket_name": "ogify-renders-staging-preview"
+          "id": "44c310ab68754c14b8f7b702304a0426"
         }
       ],
       "browser": {
         "binding": "BROWSER"
       },
       "vars": {
-        "OGIFY_ENV": "staging"
+        "OGIFY_ENV": "staging",
+        "SUPABASE_URL": "https://fnrwytacoyeqczxeslku.supabase.co"
       }
     }
   }
